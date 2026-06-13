@@ -1,0 +1,26 @@
+[
+  {
+    "vulnerability_type": "Access Control Bypass",
+    "severity": "CRITICAL",
+    "description": "The `sui::display` module's modification functions (`update_version`, `add`, `add_multiple`, `edit`, `remove`) for `Display<T>` objects lack proper authorization checks. While `Display<T>` creation correctly requires a `&Publisher` capability, these modification functions only take a mutable reference to the `Display<T>` object. This allows any owner of a `Display<T>` instance, obtained via `create_and_keep`, to bypass the intended `Publisher` authorization. Consequently, unauthorized parties can alter the display rules for a type `T`, contradicting the module's stated access control policy and potentially leading to misrepresentation or manipulation of asset metadata.",
+    "timestamp": "2026-06-12T16:19:38.345Z",
+    "target_function": "sui::display::edit",
+    "namespace": "AUDIT_LOG_V1",
+    "cve_analogue": "CWE-284",
+    "remediation": "Modify all `Display<T>` object modification functions (`update_version`, `add`, `add_multiple`, `edit`, `remove`) to require a `&Publisher` capability as an argument, similar to the creation functions. This ensures that only the authorized publisher can alter the display rules for a given type `T`.",
+    "risk_score": 95,
+    "agent_consensus": "CONFIRMED",
+    "walrus_object_id": "SyRWiDrby8jJCk3D9AMB9jhJbm9-iI0EiYvHBfLxT5g",
+    "status": "VERIFIED"
+  },
+  {
+    "vulnerability_type": "Parse Error",
+    "severity": "MEDIUM",
+    "description": "{\n  \"vulnerability_type\": \"Misleading Coin Registration (Phishing/Spoofing)\",\n  \"severity\": \"CRITICAL\",\n  \"description\": \"The `sui::coin_registry` module, while robust in its code implementation, allows for permissionless registration of new coin types via `new_currency`. This design enables an atta",
+    "timestamp": "2026-06-12T16:15:29.788Z",
+    "target_function": "unknown",
+    "namespace": "AUDIT_LOG_V1",
+    "walrus_object_id": "GVq38w5RZofuDnPbw-UgIv--cPe8H3K2LivuhD7yEwI",
+    "status": "VERIFIED"
+  }
+]
