@@ -1,0 +1,14 @@
+# Ignore large executables and archives in the move directory
+move/*.exe
+move/*.tgz
+move/*.tar.gz
+move/*.zip
+
+# Common folders
+node_modules/
+.env*
+!.env.example
+
+# Other OS files
+.DS_Store
+Thumbs.db
