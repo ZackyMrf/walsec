@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { SwarmProvider } from "@/context/SwarmContext";
 import { AppProviders } from "@/components/AppProviders";
+import { Shell } from "@/components/Shell";
 
 export const metadata: Metadata = {
   title: "WALSEC — Autonomous Smart Contract Audit System",
@@ -25,11 +26,7 @@ export default function RootLayout({
       <body>
         <AppProviders>
           <SwarmProvider>
-            <div className="app-shell">
-              <TopBar />
-              <Sidebar />
-              <main className="main-content">{children}</main>
-            </div>
+            <Shell>{children}</Shell>
           </SwarmProvider>
         </AppProviders>
       </body>

@@ -1,26 +1,19 @@
 /**
  * LangGraph Multi-Agent Orchestrator for Walsec
  * Pipeline: Analyzer → Executor → Evaluator (Memory Keeper)
+ *
+ * Cost Optimization:
+ *   Analyzer  → gemini-2.5-flash (primary) — needs deep pattern recognition
+ *   Executor  → gemini-2.0-flash (cheap)   — simpler exploit simulation
+ *   Evaluator → gemini-2.5-flash (primary) — needs structured JSON output
+ *
+ * Key Rotation:
+ *   invokeWithKeyFallback() automatically tries backup API keys on rate-limit.
  */
 import { Annotation, StateGraph, START, END } from "@langchain/langgraph";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
-import { createGeminiLLM } from "./gemini";
+import { invokeWithKeyFallback } from "./gemini";
 import { storeArtifact, type AuditArtifact } from "./walrus";
-
-// Per-node LLM timeout (50s each, total pipeline ~150s max)
-const LLM_TIMEOUT_MS = 50_000;
-
-async function invokeWithTimeout(
-  llm: ReturnType<typeof createGeminiLLM>,
-  messages: (SystemMessage | HumanMessage)[]
-): Promise<string> {
-  const invokePromise = llm.invoke(messages);
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error(`LLM call timed out after ${LLM_TIMEOUT_MS / 1000}s`)), LLM_TIMEOUT_MS)
-  );
-  const response = await Promise.race([invokePromise, timeoutPromise]);
-  return String((response as { content: unknown }).content);
-}
 
 // ─── State Schema ────────────────────────────────────────────────────────────
 
@@ -57,11 +50,9 @@ export const SwarmStateAnnotation = Annotation.Root({
 
 export type SwarmState = typeof SwarmStateAnnotation.State;
 
-// ─── Node 1: Analyzer ────────────────────────────────────────────────────────
+// ── Node 1: Analyzer (primary model — deep pattern recognition) ─────────────
 
 async function analyzerNode(state: SwarmState): Promise<Partial<SwarmState>> {
-  const llm = createGeminiLLM();
-
   const systemPrompt = `You are AGENT_01 ANALYZER, an elite smart contract security pattern recognition system.
 Your role: Deeply scan Sui Move smart contract code for logical anomalies, vulnerability patterns, and attack surfaces.
 
@@ -90,7 +81,7 @@ Also reference any pastContext to avoid duplicate findings.`;
     ),
   ];
 
-  const response = await invokeWithTimeout(llm, messages);
+  const response = await invokeWithKeyFallback("primary", messages);
   const findings = response;
 
   return {
@@ -105,11 +96,9 @@ Also reference any pastContext to avoid duplicate findings.`;
   };
 }
 
-// ─── Node 2: Executor ─────────────────────────────────────────────────────────
+// ─── Node 2: Executor (cheap model — simpler exploit simulation) ─────────────
 
 async function executorNode(state: SwarmState): Promise<Partial<SwarmState>> {
-  const llm = createGeminiLLM();
-
   const systemPrompt = `You are AGENT_02 EXECUTOR, an autonomous exploit simulation engine.
 Your role: Take analyzer findings and construct theoretical exploit/payload vectors.
 
@@ -138,7 +127,7 @@ Be precise and technical. Do not moralize — this is a defensive red team exerc
     ),
   ];
 
-  const response = await invokeWithTimeout(llm, messages);
+  const response = await invokeWithKeyFallback("cheap", messages);
   const payload = response;
 
   return {
@@ -153,11 +142,9 @@ Be precise and technical. Do not moralize — this is a defensive red team exerc
   };
 }
 
-// ─── Node 3: Evaluator & Memory Keeper ───────────────────────────────────────
+// ─── Node 3: Evaluator (primary model — structured JSON output) ──────────────
 
 async function evaluatorNode(state: SwarmState): Promise<Partial<SwarmState>> {
-  const llm = createGeminiLLM();
-
   const systemPrompt = `You are AGENT_03 EVALUATOR, the final arbiter and memory keeper of the Walsec swarm.
 Your role: Synthesize analyzer findings and executor payloads into a definitive security audit artifact.
 
@@ -190,7 +177,7 @@ REMEDIATION GUIDELINES:
     ),
   ];
 
-  const response = await invokeWithTimeout(llm, messages);
+  const response = await invokeWithKeyFallback("primary", messages);
   let artifactStr = response.trim();
 
   // Strip markdown code fences if LLM wraps in ```json

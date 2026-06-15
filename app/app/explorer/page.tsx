@@ -29,8 +29,8 @@ function StatusChip({ status }: { status?: StatusType }) {
     status === "VERIFIED"
       ? "chip chip-verified"
       : status === "SYNCING"
-      ? "chip chip-syncing"
-      : "chip chip-corrupt";
+        ? "chip chip-syncing"
+        : "chip chip-corrupt";
   return <span className={cls}>{status || "UNKNOWN"}</span>;
 }
 
@@ -82,29 +82,29 @@ export default function ExplorerPage() {
       setLoading(false);
       return;
     }
-    
+
     setLoading(true);
     try {
       const packageId = "0x2e42962a95b4a478c27391489a35d225b5d88f678655d2ef2d73b349b1739f8d";
-      
+
       // Query events emitted by our smart contract
       const { data } = await suiClient.queryEvents({
         query: { MoveEventType: `${packageId}::audit::AuditRecorded` },
         order: "descending"
       });
-      
+
       // Filter events by the current connected wallet address
       const userArtifacts = data
         .map(event => event.parsedJson as any)
         .filter(json => json.auditor === account.address)
         .map(json => ({
-           walrus_object_id: json.walrus_object_id,
-           severity: json.severity,
-           timestamp: json.timestamp,
-           vulnerability_type: "On-Chain Audit Record",
-           description: "This record is permanently stored on the Sui blockchain and linked to Walrus decentralized storage.",
-           status: "VERIFIED" as const,
-           namespace: "WALSEC_ONCHAIN"
+          walrus_object_id: json.walrus_object_id,
+          severity: json.severity,
+          timestamp: json.timestamp,
+          vulnerability_type: "On-Chain Audit Record",
+          description: "This record is permanently stored on the Sui blockchain and linked to Walrus decentralized storage.",
+          status: "VERIFIED" as const,
+          namespace: "WALSEC_ONCHAIN"
         }));
 
       setArtifacts(userArtifacts);
@@ -136,10 +136,9 @@ export default function ExplorerPage() {
     const interval = setInterval(() => {
       setNetworkLogs((prev) => [
         ...prev.slice(-20),
-        `[${new Date().toLocaleTimeString()}] ${
-          ["SYNC_OK", "PEER_HANDSHAKE", "EPOCH_BUMP", "SHARD_REPLICATED"][
-            Math.floor(Math.random() * 4)
-          ]
+        `[${new Date().toLocaleTimeString()}] ${["SYNC_OK", "PEER_HANDSHAKE", "EPOCH_BUMP", "SHARD_REPLICATED"][
+        Math.floor(Math.random() * 4)
+        ]
         }: ${Math.floor(Math.random() * 999)}`,
       ]);
     }, 2000);

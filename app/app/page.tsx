@@ -237,10 +237,10 @@ function SeverityChip({ severity }: { severity: string }) {
 
 // ─── Agent Pipeline Stepper ──────────────────────────────────────────────────
 const PIPELINE_STAGES: { key: AgentStage; label: string; sub: string; color: string }[] = [
-  { key: "analyzer",  label: "ANALYZER",  sub: "Pattern Scan",     color: "var(--secondary)" },
-  { key: "executor",  label: "EXECUTOR",  sub: "Exploit Sim",     color: "var(--on-tertiary-container)" },
-  { key: "evaluator", label: "EVALUATOR", sub: "Consensus",        color: "var(--semantic-safe)" },
-  { key: "storing",   label: "STORE",     sub: "On-Chain",        color: "var(--semantic-warning)" },
+  { key: "analyzer", label: "ANALYZER", sub: "Pattern Scan", color: "var(--secondary)" },
+  { key: "executor", label: "EXECUTOR", sub: "Exploit Sim", color: "var(--on-tertiary-container)" },
+  { key: "evaluator", label: "EVALUATOR", sub: "Consensus", color: "var(--semantic-safe)" },
+  { key: "storing", label: "STORE", sub: "On-Chain", color: "var(--semantic-warning)" },
 ];
 
 const STAGE_ORDER: AgentStage[] = ["analyzer", "executor", "evaluator", "storing"];

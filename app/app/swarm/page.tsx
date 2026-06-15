@@ -154,8 +154,8 @@ export default function SwarmPage() {
                   metrics.entropyLevel === "HIGH"
                     ? "var(--semantic-alert)"
                     : metrics.entropyLevel === "MEDIUM"
-                    ? "var(--semantic-warning)"
-                    : "var(--semantic-safe)",
+                      ? "var(--semantic-warning)"
+                      : "var(--semantic-safe)",
               }}
             >
               {metrics.entropyLevel}
@@ -323,7 +323,7 @@ export default function SwarmPage() {
             <div
               className="headline-md"
               style={{ color: "var(--secondary)", fontFamily: "var(--font-mono)" }}
-            suppressHydrationWarning
+              suppressHydrationWarning
             >
               {mounted ? `${(threatsDeflected / 1000).toFixed(1)}k` : "28.4k"}
             </div>
