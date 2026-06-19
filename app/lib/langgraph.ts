@@ -4,7 +4,7 @@
  *
  * Cost Optimization:
  *   Analyzer  → gemini-2.5-flash (primary) — needs deep pattern recognition
- *   Executor  → gemini-2.0-flash (cheap)   — simpler exploit simulation
+ *   Executor  → gemini-1.5-flash (cheap)   — simpler exploit simulation
  *   Evaluator → gemini-2.5-flash (primary) — needs structured JSON output
  *
  * Key Rotation:
