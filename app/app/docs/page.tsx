@@ -124,8 +124,9 @@ export default function DocsPage() {
                 <li>One-click vulnerability patching</li>
                 <li>Decentralized storage via Walrus</li>
                 <li>Immutable on-chain audit records on Sui</li>
-                <li>Real-time terminal interface</li>
-                <li>Audit history with full JSON details</li>
+                <li><strong>Ask Walsec:</strong> AI Terminal Assistant</li>
+                <li><strong>Wallet-Persistent Memory:</strong> Chat history tied to wallet</li>
+                <li>Dedicated AI Output Viewer with one-click code copy</li>
               </ul>
             </div>
             <div className="docs-card">
@@ -419,8 +420,16 @@ WALRUS_TIMEOUT_MS = 8_000      // Non-blocking Walrus fetch`}</pre>
           </div>
 
           <div className="docs-card">
-            <h3>Terminal Commands</h3>
-            <p>Available commands in the Terminal page (<code>/config</code>):</p>
+            <h3>Ask Walsec (Terminal Interface)</h3>
+            <p>
+              The "Ask Walsec" page (<code>/config</code>) is a retro-futuristic AI terminal. 
+              It requires a wallet connection to unlock. Your chat history and terminal session 
+              are permanently tied to your connected wallet address. Disconnecting your wallet 
+              will securely lock the terminal.
+            </p>
+            <p>Generated code is elegantly presented in the dedicated <strong>AI Output Viewer</strong> on the right panel, complete with a language header and a one-click <code>COPY</code> button.</p>
+            
+            <h4>Terminal Commands</h4>
             <div className="docs-table-wrapper">
               <table className="docs-table">
                 <thead>
@@ -576,10 +585,11 @@ Network:    Sui Testnet`}</pre>
               </ul>
             </div>
             <div className="docs-card">
-              <h3>Storage</h3>
+              <h3>Storage & Memory</h3>
               <ul className="docs-list">
                 <li><strong>Walrus</strong> — Decentralized blob storage</li>
                 <li><strong>Sui Events</strong> — On-chain audit record persistence</li>
+                <li><strong>Memwal SDK</strong> — Wallet-tied semantic memory for Chat & Audit Logs</li>
               </ul>
             </div>
           </div>
