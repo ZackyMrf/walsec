@@ -71,7 +71,7 @@ export default function LandingPage() {
       <nav className="landing-nav" style={{ transform: `translateY(${scrollY > 50 ? "-2px" : "0"})` }}>
         <div className="landing-nav-inner">
           <Link href="/landing" className="landing-nav-brand">
-            <span className="landing-nav-logo">◈</span> WALSEC
+            <img src="/logo.png" alt="Walsec Logo" style={{ height: "36px", width: "auto", mixBlendMode: "screen" }} />
           </Link>
           <div className="landing-nav-links">
             <a href="#features" className="landing-nav-link">Features</a>
@@ -272,7 +272,7 @@ export default function LandingPage() {
       <footer className="landing-footer">
         <div className="landing-footer-inner">
           <div className="landing-footer-brand">
-            <span className="landing-nav-logo"></span> WALSEC
+            <img src="/logo.png" alt="Walsec Logo" style={{ height: "42px", width: "auto", marginBottom: "16px", mixBlendMode: "screen" }} />
             <span className="landing-footer-tagline">Autonomous Smart Contract Audit System</span>
           </div>
           <div className="landing-footer-links">

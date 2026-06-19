@@ -44,8 +44,8 @@ export function TopBar() {
   return (
     <header className="topbar">
       {/* Left: Brand */}
-      <Link href="/landing" className="topbar-brand">
-        WALSEC
+      <Link href="/landing" className="topbar-brand" style={{ display: "flex", alignItems: "center" }}>
+        <img src="/logo.png" alt="Walsec Logo" style={{ height: "32px", width: "auto", mixBlendMode: "screen" }} />
       </Link>
 
       {/* Center: Node status */}

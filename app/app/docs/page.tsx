@@ -59,9 +59,8 @@ export default function DocsPage() {
       {/* Sidebar */}
       <aside className={`docs-sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="docs-sidebar-header">
-          <Link href="/landing" className="docs-logo-link">
-            <span className="docs-logo-icon">{"\u25C6"}</span>
-            <span className="docs-logo-text">WALSEC</span>
+          <Link href="/landing" className="docs-logo-link" style={{ display: "flex", alignItems: "center" }}>
+            <img src="/logo.png" alt="Walsec Logo" style={{ height: "36px", width: "auto", mixBlendMode: "screen" }} />
           </Link>
           <span className="docs-version-badge">v1.0</span>
         </div>
@@ -640,7 +639,7 @@ Network:    Sui Testnet`}</pre>
         <footer className="docs-footer">
           <div className="docs-footer-content">
             <div>
-              <span className="docs-footer-logo">{"\u25C6"} WALSEC</span>
+              <img src="/logo.png" alt="Walsec Logo" style={{ height: "36px", width: "auto", marginBottom: "8px", display: "block", mixBlendMode: "screen" }} />
               <p>Autonomous Smart Contract Security Auditing on Sui</p>
             </div>
             <div className="docs-footer-links">

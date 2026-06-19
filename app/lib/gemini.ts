@@ -31,7 +31,7 @@ type ModelPreset = "primary" | "cheap" | "chat";
 const MODEL_MAP: Record<ModelPreset, string> = {
   primary: process.env.GEMINI_MODEL_PRIMARY || "gemini-2.5-flash",
   cheap: process.env.GEMINI_MODEL_CHEAP || "gemini-2.5-flash",
-  chat: process.env.GEMINI_MODEL_CHAT || "gemini-1.5-flash",
+  chat: process.env.GEMINI_MODEL_CHAT || "gemini-2.5-flash",
 };
 
 // ─── Rate-limit tracking ─────────────────────────────────────────────────────
