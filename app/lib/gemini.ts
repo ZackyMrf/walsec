@@ -7,7 +7,7 @@
  *
  * Model Strategy (cost-optimized):
  *   - "primary"  → gemini-2.5-flash  (Analyzer & Evaluator — need quality)
- *   - "cheap"    → gemini-2.0-flash  (Executor — simpler exploit simulation)
+ *   - "cheap"    → gemini-1.5-flash  (Executor — simpler exploit simulation)
  */
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
@@ -26,11 +26,12 @@ function getGeminiKeys(): string[] {
 
 // ─── Model Presets ───────────────────────────────────────────────────────────
 
-type ModelPreset = "primary" | "cheap";
+type ModelPreset = "primary" | "cheap" | "chat";
 
 const MODEL_MAP: Record<ModelPreset, string> = {
   primary: process.env.GEMINI_MODEL_PRIMARY || "gemini-2.5-flash",
-  cheap: process.env.GEMINI_MODEL_CHEAP || "gemini-2.0-flash",
+  cheap: process.env.GEMINI_MODEL_CHEAP || "gemini-2.5-flash",
+  chat: process.env.GEMINI_MODEL_CHAT || "gemini-1.5-flash",
 };
 
 // ─── Rate-limit tracking ─────────────────────────────────────────────────────
@@ -67,6 +68,7 @@ export function createGeminiLLM(
     apiKey,
     temperature: 0.2,
     maxOutputTokens: 4096,
+    maxRetries: 0,
   });
 }
 
