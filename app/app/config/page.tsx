@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useCurrentAccount } from "@mysten/dapp-kit";
 
 // ─── Config keys ─────────────────────────────────────────────────────────────
 const STORAGE_KEYS = {
@@ -10,17 +11,14 @@ const STORAGE_KEYS = {
 
 // ─── Terminal command history ─────────────────────────────────────────────────
 const BOOT_SEQUENCE = [
-  { text: "[OK] SYSTEM_BOOT_COMPLETE: ALL MODULES NOMINAL", cls: "log-success" },
-  { text: "OPERATOR_ID: WALSEC_DELTA_9", cls: "" },
-  { text: "OPERATOR_ID: WALSEC_DELTA_9", cls: "" },
-  { text: "OPERATOR_ID: WALSEC_DELTA_9", cls: "" },
-  { text: "[OK] HANDSHAKE_SUCCESSFUL: NODE_0x88A2_CONNECTED", cls: "log-success" },
-  { text: "OPERATOR_ID: WALSEC_DELTA_9", cls: "" },
-  { text: "OPERATOR_ID: WALSEC_DELTA_9", cls: "" },
-  { text: "[AUDIT] PROCESS_9454 AUTHENTICATED", cls: "log-system" },
-  { text: "[AUDIT] PROCESS_8720 AUTHENTICATED", cls: "log-system" },
-  { text: "[AUDIT] PROCESS_2853 AUTHENTICATED", cls: "log-system" },
-  { text: "[AUDIT] PROCESS_6052 AUTHENTICATED", cls: "log-system" },
+  { text: "    _    ____  _  __  __        __    _     ____  _____ ____ ", cls: "log-analyzer" },
+  { text: "   / \\  / ___|| |/ /  \\ \\      / /_ _| |   / ___|| ____/ ___|", cls: "log-analyzer" },
+  { text: "  / _ \\ \\___ \\| ' /    \\ \\ /\\ / / _` | |   \\___ \\|  _|| |    ", cls: "log-analyzer" },
+  { text: " / ___ \\ ___) | . \\     \\ V  V / (_| | |___ ___) | |__| |___ ", cls: "log-analyzer" },
+  { text: "/_/   \\_\\____/|_|\\_\\     \\_/\\_/ \\__,_|_____|____/|_____\\____|", cls: "log-analyzer" },
+  { text: "", cls: "" },
+  { text: "Welcome to WALSEC AI Assistant. Type your question below or use 'help'.", cls: "log-system" },
+  { text: "", cls: "" },
 ];
 
 const COMMAND_RESPONSES: Record<string, { text: string; cls: string }[]> = {
@@ -97,19 +95,91 @@ const COMMAND_RESPONSES: Record<string, { text: string; cls: string }[]> = {
 export default function ConfigPage() {
   const [terminalLines, setTerminalLines] = useState<{ text: string; cls: string }[]>(BOOT_SEQUENCE);
   const [cmd, setCmd] = useState("");
-  const [geminiKey, setGeminiKey] = useState("");
-  const [memwalKey, setMemwalKey] = useState("");
-  const [saved, setSaved] = useState(false);
-  const [uptime] = useState("99.9%");
+  const [aiSidePanel, setAiSidePanel] = useState("");
+  const [displayedCode, setDisplayedCode] = useState("");
+  const [codeTitle, setCodeTitle] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+  const [pendingTerminalLines, setPendingTerminalLines] = useState<{ text: string; cls: string }[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
   const termRef = useRef<HTMLDivElement>(null);
+  const account = useCurrentAccount();
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount or account change
   useEffect(() => {
-    const gk = localStorage.getItem(STORAGE_KEYS.GEMINI_API_KEY) || "";
-    const mk = localStorage.getItem(STORAGE_KEYS.MEMWAL_DELEGATE_KEY) || "";
-    setGeminiKey(gk);
-    setMemwalKey(mk);
-  }, []);
+    if (account?.address) {
+      const savedHistory = localStorage.getItem(`walsec_terminal_history_${account.address}`);
+      if (savedHistory) {
+        try {
+          setTerminalLines(JSON.parse(savedHistory));
+        } catch (e) {
+          console.error("Failed to parse terminal history", e);
+        }
+      } else {
+        setTerminalLines(BOOT_SEQUENCE);
+      }
+      const savedPanel = localStorage.getItem(`walsec_ai_sidepanel_${account.address}`);
+      const savedTitle = localStorage.getItem(`walsec_ai_code_title_${account.address}`);
+      if (savedPanel) {
+        setAiSidePanel(savedPanel);
+        setDisplayedCode(savedPanel);
+        setCodeTitle(savedTitle || "code_snippet");
+      } else {
+        setAiSidePanel("");
+        setDisplayedCode("");
+        setCodeTitle("");
+      }
+    } else {
+      setTerminalLines([{ text: "[SYS] NO_WALLET_CONNECTED: Activity persistence suspended.", cls: "log-warn" }, ...BOOT_SEQUENCE]);
+      setAiSidePanel("");
+      setDisplayedCode("");
+      setCodeTitle("");
+    }
+    setIsLoaded(true);
+  }, [account?.address]);
+
+  // Save terminal lines to localStorage when they change
+  useEffect(() => {
+    if (isLoaded && account?.address) {
+      localStorage.setItem(`walsec_terminal_history_${account.address}`, JSON.stringify(terminalLines));
+    }
+  }, [terminalLines, isLoaded, account?.address]);
+
+  // Save side panel to localStorage
+  useEffect(() => {
+    if (isLoaded && account?.address) {
+      localStorage.setItem(`walsec_ai_sidepanel_${account.address}`, aiSidePanel);
+      localStorage.setItem(`walsec_ai_code_title_${account.address}`, codeTitle);
+    }
+  }, [aiSidePanel, codeTitle, isLoaded, account?.address]);
+
+  // Matrix Typing Animation
+  useEffect(() => {
+    if (isTyping && aiSidePanel) {
+      let i = 0;
+      setDisplayedCode("");
+      const interval = setInterval(() => {
+        setDisplayedCode(aiSidePanel.slice(0, i + 1));
+        i++;
+        if (i >= aiSidePanel.length) {
+          clearInterval(interval);
+          setIsTyping(false);
+        }
+      }, 10);
+      return () => clearInterval(interval);
+    }
+  }, [isTyping, aiSidePanel]);
+
+  // Push pending terminal lines when typing finishes
+  useEffect(() => {
+    if (!isTyping && pendingTerminalLines.length > 0) {
+      setTerminalLines((prev) => {
+        const filtered = prev.filter((l) => l.text !== `[SYS] COMPILING_AND_STREAMING_CODE_MATRIX...`);
+        return [...filtered, ...pendingTerminalLines];
+      });
+      setPendingTerminalLines([]);
+    }
+  }, [isTyping, pendingTerminalLines]);
 
   // Auto-scroll terminal
   useEffect(() => {
@@ -118,29 +188,11 @@ export default function ConfigPage() {
     }
   }, [terminalLines]);
 
-  // Save keys to localStorage
-  const saveKeys = useCallback(() => {
-    if (geminiKey) localStorage.setItem(STORAGE_KEYS.GEMINI_API_KEY, geminiKey);
-    else localStorage.removeItem(STORAGE_KEYS.GEMINI_API_KEY);
-
-    if (memwalKey) localStorage.setItem(STORAGE_KEYS.MEMWAL_DELEGATE_KEY, memwalKey);
-    else localStorage.removeItem(STORAGE_KEYS.MEMWAL_DELEGATE_KEY);
-
-    setSaved(true);
-    setTerminalLines((prev) => [
-      ...prev,
-      { text: "[OK] CONFIG_SAVED: Keys persisted to localStorage", cls: "log-success" },
-      {
-        text: `[OK] GEMINI_KEY: ${geminiKey ? "SET (" + geminiKey.slice(0, 8) + "...)" : "CLEARED"}`,
-        cls: "log-system",
-      },
-      {
-        text: `[OK] MEMWAL_KEY: ${memwalKey ? "SET (" + memwalKey.slice(0, 8) + "...)" : "CLEARED"}`,
-        cls: "log-system",
-      },
-    ]);
-    setTimeout(() => setSaved(false), 3000);
-  }, [geminiKey, memwalKey]);
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(aiSidePanel);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
 
   // Terminal command handler
   function handleCommand(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -154,40 +206,14 @@ export default function ConfigPage() {
 
     if (input === "clear") {
       setTerminalLines([echo, { text: "", cls: "" }]);
-      return;
-    }
-
-    if (input.startsWith("set-gemini-key ")) {
-      const key = input.split(" ")[1];
-      setGeminiKey(key);
-      localStorage.setItem(STORAGE_KEYS.GEMINI_API_KEY, key);
-      setTerminalLines((prev) => [
-        ...prev,
-        echo,
-        { text: `[OK] GEMINI_KEY_UPDATED: ${key.slice(0, 8)}...`, cls: "log-success" },
-      ]);
-      return;
-    }
-
-    if (input.startsWith("set-memwal-key ")) {
-      const key = input.split(" ")[1];
-      setMemwalKey(key);
-      localStorage.setItem(STORAGE_KEYS.MEMWAL_DELEGATE_KEY, key);
-      setTerminalLines((prev) => [
-        ...prev,
-        echo,
-        { text: `[OK] MEMWAL_KEY_UPDATED: ${key.slice(0, 8)}...`, cls: "log-success" },
-      ]);
-      return;
-    }
-
-    if (input === "show-config") {
-      setTerminalLines((prev) => [
-        ...prev,
-        echo,
-        { text: `GEMINI_API_KEY: ${geminiKey ? geminiKey.slice(0, 8) + "..." : "(using .env)"}`, cls: "" },
-        { text: `MEMWAL_DELEGATE_KEY: ${memwalKey ? memwalKey.slice(0, 8) + "..." : "(not set)"}`, cls: "" },
-      ]);
+      setAiSidePanel("");
+      setDisplayedCode("");
+      setCodeTitle("");
+      if (account?.address) {
+        localStorage.removeItem(`walsec_terminal_history_${account.address}`);
+        localStorage.removeItem(`walsec_ai_sidepanel_${account.address}`);
+        localStorage.removeItem(`walsec_ai_code_title_${account.address}`);
+      }
       return;
     }
 
@@ -257,11 +283,78 @@ export default function ConfigPage() {
     if (response) {
       setTerminalLines((prev) => [...prev, echo, ...response]);
     } else {
+      // Fallback to AI Chatbot via Memwal
       setTerminalLines((prev) => [
         ...prev,
         echo,
-        { text: `[ERROR] Unknown command: '${input}'. Type 'help' for commands.`, cls: "log-error" },
+        { text: `[SYS] AWAITING_AI_RESPONSE...`, cls: "log-analyzer" },
       ]);
+
+      fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: input }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.response) {
+            const fullResponse = data.response;
+            const codeRegex = /```(.*)\n([\s\S]*?)```/g;
+            let match;
+            const codeBlocks = [];
+            let lastIndex = 0;
+            let textOnly = "";
+            let firstLang = "";
+
+            while ((match = codeRegex.exec(fullResponse)) !== null) {
+              if (!firstLang && match[1]) firstLang = match[1].trim();
+              textOnly += fullResponse.slice(lastIndex, match.index);
+              codeBlocks.push(match[2].trim());
+              lastIndex = codeRegex.lastIndex;
+            }
+            textOnly += fullResponse.slice(lastIndex);
+
+            const finalCode = codeBlocks.join("\n\n");
+            const finalText = textOnly.trim();
+
+            if (finalCode) {
+              setAiSidePanel(finalCode);
+              setCodeTitle(firstLang || "code_snippet");
+              setIsTyping(true);
+              const lines = finalText.split("\n").filter(Boolean).map((line: string) => ({
+                text: line,
+                cls: "",
+              }));
+              setPendingTerminalLines(lines);
+
+              setTerminalLines((prev) => {
+                const filtered = prev.filter((l) => l.text !== `[SYS] AWAITING_AI_RESPONSE...`);
+                return [...filtered, { text: `[SYS] COMPILING_AND_STREAMING_CODE_MATRIX...`, cls: "log-analyzer" }];
+              });
+            } else {
+              // No code, just push text immediately
+              setTerminalLines((prev) => {
+                const filtered = prev.filter((l) => l.text !== `[SYS] AWAITING_AI_RESPONSE...`);
+                const lines = finalText.split("\n").filter(Boolean).map((line: string) => ({
+                  text: line,
+                  cls: "",
+                }));
+                return [...filtered, ...lines];
+              });
+            }
+          } else {
+            setTerminalLines((prev) => {
+              const filtered = prev.filter((l) => l.text !== `[SYS] AWAITING_AI_RESPONSE...`);
+              return [...filtered, { text: `[ERROR] AI Chat failed: ${data.error || "Unknown error"}`, cls: "log-error" }];
+            });
+          }
+        })
+        .catch(() => {
+          setTerminalLines((prev) => {
+            const filtered = prev.filter((l) => l.text !== `[SYS] AWAITING_AI_RESPONSE...`);
+            return [...filtered, { text: `[ERROR] Network failure communicating with AI.`, cls: "log-error" }];
+          });
+        });
     }
   }
 
@@ -272,7 +365,7 @@ export default function ConfigPage() {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
           <div>
             <h1 className="headline-md" style={{ textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              SYSTEM_CONFIGURATION
+              ASK_WALSEC
             </h1>
             <p className="label-caps" style={{ marginTop: 4, fontSize: 10 }}>
               OPERATOR_ID: WALSEC_DELTA_9
@@ -304,169 +397,8 @@ export default function ConfigPage() {
           minHeight: 0,
         }}
       >
-        {/* ── Left: Metrics + Settings ─── */}
-        <div
-          style={{
-            borderRight: "1px solid var(--border-default)",
-            overflowY: "auto",
-            padding: 24,
-            display: "flex",
-            flexDirection: "column",
-            gap: 16,
-          }}
-        >
-          {/* Network Health */}
-          <div
-            style={{
-              background: "var(--surface-card)",
-              border: "1px solid var(--border-default)",
-              padding: 20,
-            }}
-          >
-            <div className="label-caps" style={{ fontSize: 10, marginBottom: 12 }}>
-              NETWORK_HEALTH
-            </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-              <span
-                className="headline-lg"
-                style={{ color: "var(--primary)", fontFamily: "var(--font-mono)" }}
-              >
-                {uptime}
-              </span>
-              <span className="label-caps" style={{ color: "var(--semantic-safe)", fontSize: 10 }}>
-                UPTIME_OK
-              </span>
-            </div>
-            <div className="progress-bar" style={{ marginTop: 12 }}>
-              <div className="progress-bar-fill safe" style={{ width: "99.9%" }} />
-            </div>
-          </div>
-
-          {/* Security Level */}
-          <div
-            style={{
-              background: "var(--surface-card)",
-              border: "1px solid var(--border-default)",
-              padding: 20,
-            }}
-          >
-            <div
-              style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}
-            >
-              <span className="label-caps" style={{ fontSize: 10 }}>SECURITY_LEVEL</span>
-              <span style={{ color: "var(--text-muted)", fontSize: 16 }}>🔒</span>
-            </div>
-            <div
-              className="head"
-              style={{ fontSize: 32, fontWeight: 700, color: "var(--primary)", marginBottom: 4 }}
-            >
-              EAL_7+
-            </div>
-            <div className="label-caps" style={{ fontSize: 10, color: "var(--text-muted)" }}>
-              FORMAL_VERIFICATION_COMPLETE
-            </div>
-            <div
-              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}
-            >
-              <div>
-                <div className="label-caps" style={{ fontSize: 9, color: "var(--text-muted)" }}>OPERATOR_ID</div>
-                <div className="mono" style={{ fontSize: 11 }}>WALSEC_DELTA_9</div>
-                <div className="mono" style={{ fontSize: 14, fontWeight: 700 }}>0/24H</div>
-              </div>
-              <div>
-                <div className="label-caps" style={{ fontSize: 9, color: "var(--text-muted)" }}>OPERATOR_ID</div>
-                <div className="mono" style={{ fontSize: 11 }}>WALSEC_DELTA_9</div>
-                <div className="mono" style={{ fontSize: 14, fontWeight: 700 }}>12MS</div>
-              </div>
-            </div>
-          </div>
-
-          {/* API Keys */}
-          <div
-            style={{
-              background: "var(--surface-card)",
-              border: "1px solid var(--border-default)",
-              padding: 20,
-            }}
-          >
-            <div className="label-caps" style={{ fontSize: 10, marginBottom: 16 }}>
-              API_KEY_OVERRIDES
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div>
-                <label className="label-caps" style={{ fontSize: 9, display: "block", marginBottom: 4 }}>
-                  GEMINI_API_KEY
-                </label>
-                <input
-                  id="gemini-api-key-input"
-                  type="password"
-                  className="input"
-                  placeholder="AIza... (leave empty to use .env)"
-                  value={geminiKey}
-                  onChange={(e) => setGeminiKey(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="label-caps" style={{ fontSize: 9, display: "block", marginBottom: 4 }}>
-                  MEMWAL_DELEGATE_KEY
-                </label>
-                <input
-                  id="memwal-delegate-key-input"
-                  type="password"
-                  className="input"
-                  placeholder="0x... delegate key hex"
-                  value={memwalKey}
-                  onChange={(e) => setMemwalKey(e.target.value)}
-                />
-              </div>
-              <button
-                id="save-config-btn"
-                className="btn btn-primary"
-                onClick={saveKeys}
-                style={{ width: "100%" }}
-              >
-                {saved ? "✓ SAVED" : "SAVE_CONFIGURATION"}
-              </button>
-            </div>
-          </div>
-
-          {/* System Parameters */}
-          <div
-            style={{
-              background: "var(--surface-card)",
-              border: "1px solid var(--border-default)",
-            }}
-          >
-            <div className="panel-header" style={{ padding: "10px 16px" }}>
-              <span className="label-caps" style={{ fontSize: 10 }}>SYSTEM_PARAMETERS</span>
-            </div>
-            {["NODE_CONFIGURATION", "AI_THRESHOLDS", "WALLET_INTEGRATION"].map((item) => (
-              <button
-                key={item}
-                className="sidebar-nav-item"
-                style={{
-                  width: "100%",
-                  background: "transparent",
-                  border: "none",
-                  justifyContent: "space-between",
-                  padding: "12px 16px",
-                  borderBottom: "1px solid var(--border-default)",
-                  cursor: "pointer",
-                  fontSize: 11,
-                }}
-              >
-                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span>⚙</span> {item}
-                </span>
-                <span style={{ color: "var(--text-muted)" }}>›</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Right: Terminal ─── */}
-        <div style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* ── Left: Terminal ─── */}
+        <div style={{ display: "flex", flexDirection: "column", overflow: "hidden", borderRight: "1px solid var(--border-default)" }}>
           {/* Terminal header */}
           <div
             style={{
@@ -498,7 +430,7 @@ export default function ConfigPage() {
             style={{ flex: 1, overflowY: "auto", fontSize: 12 }}
           >
             {terminalLines.map((line, i) => (
-              <div key={i} className={line.cls || "log-system"}>
+              <div key={i} className={line.cls || "log-system"} style={{ whiteSpace: "pre-wrap", fontFamily: "monospace" }}>
                 {line.text}
               </div>
             ))}
@@ -521,14 +453,17 @@ export default function ConfigPage() {
             <input
               id="terminal-command-input"
               className="input"
+              disabled={!account?.address}
               style={{
                 background: "transparent",
                 border: "none",
                 flex: 1,
                 padding: 0,
                 fontSize: 12,
+                cursor: !account?.address ? "not-allowed" : "text",
+                color: !account?.address ? "var(--text-muted)" : "inherit"
               }}
-              placeholder="ENTER OVERRIDE COMMAND..."
+              placeholder={account?.address ? "ENTER OVERRIDE COMMAND..." : "TERMINAL LOCKED: PLEASE CONNECT WALLET..."}
               value={cmd}
               onChange={(e) => setCmd(e.target.value)}
               onKeyDown={handleCommand}
@@ -544,6 +479,51 @@ export default function ConfigPage() {
                 animation: "blink 1s step-end infinite",
               }}
             />
+          </div>
+        </div>
+
+        {/* ── Right: AI Output Panel ─── */}
+        <div
+          style={{
+            overflowY: "auto",
+            padding: 24,
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+            background: "var(--surface-base)",
+          }}
+        >
+          <div className="label-caps" style={{ fontSize: 10, color: "var(--secondary)" }}>
+            AI_OUTPUT_VIEWER
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, border: '1px solid var(--border-default)' }}>
+            {displayedCode && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 16px', background: '#1e1e1e', borderBottom: '1px solid var(--border-default)' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: 11, fontFamily: 'var(--font-mono)' }}>{codeTitle}</span>
+                <button 
+                  onClick={handleCopyCode} 
+                  style={{ background: 'none', border: 'none', color: isCopied ? 'var(--semantic-safe)' : 'var(--text-muted)', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4, transition: 'color 0.2s' }}
+                >
+                  {isCopied ? "✓ COPIED" : "📋 COPY"}
+                </button>
+              </div>
+            )}
+            <div
+              style={{
+                flex: 1,
+                background: "var(--surface-card)",
+                padding: 20,
+                overflowY: "auto",
+                fontFamily: "var(--font-mono)",
+                fontSize: 12,
+                whiteSpace: "pre-wrap",
+                color: "var(--text-default)",
+                boxShadow: "inset 0 0 10px rgba(0,0,0,0.5)",
+              }}
+            >
+              {displayedCode}
+              {isTyping && <span style={{ animation: "blink 1s step-end infinite", background: "var(--semantic-safe)", color: "black" }}>█</span>}
+            </div>
           </div>
         </div>
       </div>
