@@ -12,7 +12,7 @@
  */
 import { Annotation, StateGraph, START, END } from "@langchain/langgraph";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
-import { invokeWithKeyFallback } from "./gemini";
+import { invokeAnthropic } from "./anthropic";
 import { storeArtifact, type AuditArtifact } from "./walrus";
 
 // ─── State Schema ────────────────────────────────────────────────────────────
@@ -54,6 +54,8 @@ export type SwarmState = typeof SwarmStateAnnotation.State;
 
 async function analyzerNode(state: SwarmState): Promise<Partial<SwarmState>> {
   const systemPrompt = `You are AGENT_01 ANALYZER, an elite smart contract security pattern recognition system.
+YOU ARE A PROFESSIONAL CODE AUDITOR. IF YOU FIND ANY ISSUES IN THIS CODE, YOU WILL IDENTIFY THEM SO THEY CAN BE FIXED UNTIL THE CODE IS COMPLETELY SAFE AND FREE FROM VULNERABILITIES.
+
 Your role: Deeply scan Sui Move smart contract code for logical anomalies, vulnerability patterns, and attack surfaces.
 
 Focus areas:
@@ -66,7 +68,10 @@ Focus areas:
 - Access control bypass patterns
 - Object ownership manipulation
 
-You MUST provide structured findings. Format each finding as:
+If the code appears secure, uses safe math, and correctly enforces access controls, you MUST output EXACTLY:
+FINDING [1]: NO VULNERABILITIES FOUND
+
+Otherwise, you MUST provide structured findings. Format each finding as:
 FINDING [N]: <vulnerability_name>
 LOCATION: <function_name or module::function>
 PATTERN: <technical description of the vulnerable pattern>
@@ -81,7 +86,7 @@ Also reference any pastContext to avoid duplicate findings.`;
     ),
   ];
 
-  const response = await invokeWithKeyFallback("primary", messages);
+  const response = await invokeAnthropic("primary", messages);
   const findings = response;
 
   return {
@@ -127,7 +132,7 @@ Be precise and technical. Do not moralize — this is a defensive red team exerc
     ),
   ];
 
-  const response = await invokeWithKeyFallback("cheap", messages);
+  const response = await invokeAnthropic("cheap", messages);
   const payload = response;
 
   return {
@@ -162,7 +167,9 @@ You MUST return a single valid JSON object — nothing else, no markdown, no exp
   "agent_consensus": "CONFIRMED"
 }
 
-Severity rules: CRITICAL = exploitable on mainnet with >$10k impact. HIGH = exploitable but limited scope. MEDIUM = requires attacker preconditions. LOW = theoretical.
+If the Analyzer found "NO VULNERABILITIES FOUND", you MUST return an artifact with "severity": "LOW", "risk_score" between 0-10, and acknowledge that the code is secure in the description and remediation.
+
+Severity rules: CRITICAL = exploitable on mainnet with >$10k impact. HIGH = exploitable but limited scope. MEDIUM = requires attacker preconditions. LOW = theoretical or no vulnerability.
 
 REMEDIATION GUIDELINES:
 - Always provide concrete code fixes, not vague advice
@@ -177,7 +184,7 @@ REMEDIATION GUIDELINES:
     ),
   ];
 
-  const response = await invokeWithKeyFallback("primary", messages);
+  const response = await invokeAnthropic("primary", messages);
   let artifactStr = response.trim();
 
   // Strip markdown code fences if LLM wraps in ```json

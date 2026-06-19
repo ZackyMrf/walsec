@@ -125,11 +125,13 @@ const FIXED_CONTRACTS = new Map<string, string>([
     const EUnderflow: u64 = 1;
     const EInsufficientBalance: u64 = 2;
     const EZeroAmount: u64 = 3;
+    const EUnauthorized: u64 = 4;
 
     public struct Vault has key {
         id: UID,
         balance: Balance<SUI>,
         total_deposited: u64,
+        owner: address,
     }
 
     /// FIXED: Uses math::add to prevent integer overflow.
@@ -144,9 +146,10 @@ const FIXED_CONTRACTS = new Map<string, string>([
     }
 
     /// FIXED: Uses math::sub to prevent integer underflow.
-    /// Validates sufficient balance before withdrawal.
+    /// CRITICAL FIX: Verifies that caller is the owner of the Vault.
     /// Aborts with EUnderflow if amount > total_deposited.
     public entry fun withdraw(vault: &mut Vault, amount: u64, to: address, ctx: &mut TxContext) {
+        assert!(tx_context::sender(ctx) == vault.owner, EUnauthorized);
         assert!(amount > 0, EZeroAmount);
         assert!(amount <= vault.total_deposited, EUnderflow);
         assert!(amount <= balance::value(&vault.balance), EInsufficientBalance);
