@@ -36,24 +36,15 @@ export function getMemWal() {
 }
 
 /**
- * Stores an audit artifact on the Walrus network via Memwal SDK (if configured).
- * Returns the Walrus blob ID (or job ID), or a fallback ID if Walrus is unreachable.
+ * Stores an audit artifact on the Walrus network and indexes it via Memwal SDK.
+ * Returns the Walrus blob ID, or a fallback ID if Walrus is unreachable.
  */
 export async function storeArtifact(data: AuditArtifact): Promise<string> {
   const memwal = getMemWal();
   const payload = JSON.stringify(data);
+  let blobId = "";
 
-  if (memwal) {
-    try {
-      // Store using MemWal Relayer
-      const accepted = await memwal.remember(payload, "walsec_audit");
-      return accepted.job_id;
-    } catch (err) {
-      console.warn("[MemWal] Failed to store artifact:", err);
-    }
-  }
-
-  // Fallback to old publisher behavior if memwal is not configured or fails
+  // 1. Upload to Walrus Publisher first to get a deterministic blob_id
   const publisherUrl = process.env.WALRUS_PUBLISHER_URL || "https://publisher.walrus-testnet.walrus.space";
   try {
     const response = await fetch(`${publisherUrl}/v1/blobs?epochs=5`, {
@@ -63,11 +54,24 @@ export async function storeArtifact(data: AuditArtifact): Promise<string> {
     });
     if (!response.ok) throw new Error(`Walrus publisher returned ${response.status}`);
     const result = await response.json();
-    return result?.newlyCreated?.blobObject?.blobId || result?.alreadyCertified?.blobId || `walrus_${Date.now().toString(16)}`;
+    blobId = result?.newlyCreated?.blobObject?.blobId || result?.alreadyCertified?.blobId || `walrus_${Date.now().toString(16)}`;
   } catch (err) {
     console.warn("[Walrus] Publisher unavailable:", (err as Error).message);
-    return `pending_${Date.now().toString(16)}_${Math.random().toString(16).slice(2, 8)}`;
+    blobId = `pending_${Date.now().toString(16)}_${Math.random().toString(16).slice(2, 8)}`;
   }
+
+  // 2. Persist semantic memory in MemWal using the payload
+  if (memwal && !blobId.startsWith("pending_")) {
+    try {
+      // We inject the correct blobId so Memwal's semantic search has it too
+      const enrichedData = { ...data, walrus_object_id: blobId };
+      await memwal.remember(JSON.stringify(enrichedData), "walsec_audit");
+    } catch (err) {
+      console.warn("[MemWal] Failed to store artifact:", err);
+    }
+  }
+
+  return blobId;
 }
 
 /**

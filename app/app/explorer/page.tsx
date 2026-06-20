@@ -6,7 +6,13 @@ import { useCurrentAccount, useSuiClient } from '@mysten/dapp-kit';
 // Walrus aggregator base URL (public read — no wallet needed)
 const WALRUS_AGGREGATOR = "https://aggregator.walrus-testnet.walrus.space";
 
+function isBlobId(id: string) {
+  // MemWal job IDs are UUIDs which contain hyphens. True Walrus blob IDs do not.
+  return !id.includes("-") && !id.startsWith("pending_");
+}
+
 function walrusBlobUrl(id: string) {
+  if (!isBlobId(id)) return "#"; // prevent navigating to aggregator with UUID
   return `${WALRUS_AGGREGATOR}/v1/blobs/${id}`;
 }
 // Inline type — mirrors AuditArtifact from lib/walrus.ts (avoids importing server code on client)
@@ -160,6 +166,13 @@ export default function ExplorerPage() {
   const pullBlob = useCallback(async (id: string) => {
     setBlobContent(null);
     setBlobLoading(true);
+    
+    if (!isBlobId(id)) {
+      setBlobContent("[ERROR] This record is pending or stored as a MemWal job ID. It does not have a valid Walrus Blob ID yet.");
+      setBlobLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch(walrusBlobUrl(id));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -473,10 +486,14 @@ export default function ExplorerPage() {
                 className="btn btn-secondary"
                 style={{ width: "100%" }}
                 onClick={() => {
-                  window.open(
-                    `https://walruscan.com/testnet/blob/${selected.walrus_object_id}`,
-                    "_blank"
-                  );
+                  if (isBlobId(selected.walrus_object_id)) {
+                    window.open(
+                      `https://walruscan.com/testnet/blob/${selected.walrus_object_id}`,
+                      "_blank"
+                    );
+                  } else {
+                    alert("This record does not have a valid Walrus Blob ID yet.");
+                  }
                 }}
               >
                 🔍 VIEW_ON_WALRUSCAN ↗
